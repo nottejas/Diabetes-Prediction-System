@@ -1,10 +1,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Risk Prediction System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <style>
+        .risk-low {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .risk-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .risk-high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .result-section {
+            display: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .recommendation-category {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
-$END$
+    <div class="container py-4">
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex align-items-center justify-content-between">
+                <h1 class="fs-4">Diabetes Risk Prediction System</h1>
+                <a href="/about" class="btn btn-outline-primary">About</a>
+            </div>
+        </header>
+
+        <div class="p-5 mb-4 bg-light rounded-3">
+            <div class="container-fluid py-2">
+                <h2 class="display-6 fw-bold">Patient Information</h2>
+                <p class="col-md-8 fs-5">Enter the patient's health information to predict diabetes risk and get personalized recommendations.</p>
+
+                <form id="predictionForm" class="row g-3">
+                    <div class="col-md-6">
+                        <label for="pregnancies" class="form-label">Number of Pregnancies</label>
+                        <input type="number" class="form-control" id="pregnancies" name="pregnancies" min="0" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="glucose" class="form-label">Glucose (mg/dL)</label>
+                        <input type="number" class="form-control" id="glucose" name="glucose" min="0" value="120">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="bloodpressure" class="form-label">Blood Pressure (mm Hg)</label>
+                        <input type="number" class="form-control" id="bloodpressure" name="bloodpressure" min="0" value="80">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="skinthickness" class="form-label">Skin Thickness (mm)</label>
+                        <input type="number" class="form-control" id="skinthickness" name="skinthickness" min="0" value="20">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="insulin" class="form-label">Insulin (μU/ml)</label>
+                        <input type="number" class="form-control" id="insulin" name="insulin" min="0" value="80">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="bmi" class="form-label">BMI (kg/m²)</label>
+                        <input type="number" class="form-control" id="bmi" name="bmi" min="0" step="0.1" value="25.0">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="diabetespedigreefunction" class="form-label">Diabetes Pedigree Function</label>
+                        <input type="number" class="form-control" id="diabetespedigreefunction" name="diabetespedigreefunction" min="0" step="0.001" value="0.5">
+                        <small class="text-muted">A function that scores likelihood of diabetes based on family history</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="age" class="form-label">Age (years)</label>
+                        <input type="number" class="form-control" id="age" name="age" min="0" value="45">
+                    </div>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Predict Risk</button>
+                        <button type="button" class="btn btn-secondary btn-lg ms-2" onclick="resetForm()">Reset</button>
+                    </div>
+                </form>
+
+                <div class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Analyzing patient data...</p>
+                </div>
+
+                <div id="resultSection" class="result-section mt-5">
+                    <h2 class="display-6 fw-bold">Prediction Results</h2>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    Risk Assessment
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">Diabetes Risk: <span id="riskCategory"></span></h5>
+                                    <div class="progress mb-3">
+                                        <div id="riskBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p class="card-text">Probability of diabetes: <span id="probability"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    Risk Factors
+                                </div>
+                                <div class="card-body">
+                                    <p>Based on the provided information, these are the key factors contributing to the patient's risk profile:</p>
+                                    <ul id="riskFactors" class="list-group list-group-flush">
+                                        <!-- Risk factors will be added dynamically -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            Personalized Recommendations
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Based on the patient's risk assessment, we recommend the following:</p>
+                            <div id="recommendations">
+                                <!-- Recommendations will be added dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary" onclick="printResults()">Print Report</button>
+                        <button type="button" class="btn btn-secondary ms-2" onclick="newPrediction()">New Prediction</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="pt-3 mt-4 text-muted border-top">
+            &copy; 2025 Diabetes Risk Prediction System Made by Rugved Manoj Kharde
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Show loading indicator
+            document.querySelector('.loading').style.display = 'block';
+
+            // Hide results if they were previously shown
+            document.getElementById('resultSection').style.display = 'none';
+
+            // Get form data
+            const formData = new FormData(this);
+
+            // Send prediction request
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                document.querySelector('.loading').style.display = 'none';
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Update results
+                const probability = (data.probability * 100).toFixed(1);
+                document.getElementById('probability').textContent = probability + '%';
+
+                // Update risk category
+                const riskCategory = document.getElementById('riskCategory');
+                riskCategory.textContent = data.risk_category;
+
+                // Update risk bar
+                const riskBar = document.getElementById('riskBar');
+                riskBar.style.width = probability + '%';
+                riskBar.textContent = probability + '%';
+
+                // Set appropriate class for the risk level
+                if (data.risk_category === 'Low Risk') {
+                    riskBar.className = 'progress-bar bg-success';
+                } else if (data.risk_category === 'Medium Risk') {
+                    riskBar.className = 'progress-bar bg-warning';
+                } else {
+                    riskBar.className = 'progress-bar bg-danger';
+                }
+
+                // Determine risk factors
+                const formValues = Object.fromEntries(formData.entries());
+                const riskFactors = [];
+
+                if (formValues.glucose >= 140) {
+                    riskFactors.push('High glucose level');
+                }
+                if (formValues.bmi >= 30) {
+                    riskFactors.push('Obesity (BMI ≥ 30)');
+                } else if (formValues.bmi >= 25) {
+                    riskFactors.push('Overweight (BMI ≥ 25)');
+                }
+                if (formValues.age >= 45) {
+                    riskFactors.push('Age ≥ 45 years');
+                }
+                if (formValues.bloodpressure >= 140) {
+                    riskFactors.push('High blood pressure');
+                }
+                if (formValues.diabetespedigreefunction >= 0.8) {
+                    riskFactors.push('Strong family history of diabetes');
+                }
+
+                // If no risk factors, add a default message
+                if (riskFactors.length === 0) {
+                    riskFactors.push('No significant individual risk factors identified');
+                }
+
+                // Update risk factors list
+                const riskFactorsList = document.getElementById('riskFactors');
+                riskFactorsList.innerHTML = '';
+
+                riskFactors.forEach(factor => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = factor;
+                    riskFactorsList.appendChild(li);
+                });
+
+                // Update recommendations
+                const recommendationsDiv = document.getElementById('recommendations');
+                recommendationsDiv.innerHTML = '';
+
+                for (const [category, items] of Object.entries(data.recommendations)) {
+                    const categoryElem = document.createElement('div');
+                    categoryElem.className = 'recommendation-category';
+                    categoryElem.textContent = category;
+                    recommendationsDiv.appendChild(categoryElem);
+
+                    const ul = document.createElement('ul');
+                    items.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        ul.appendChild(li);
+                    });
+
+                    recommendationsDiv.appendChild(ul);
+                }
+
+                // Show results
+                document.getElementById('resultSection').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.querySelector('.loading').style.display = 'none';
+                alert('An error occurred during prediction. Please try again.');
+            });
+        });
+
+        function resetForm() {
+            document.getElementById('predictionForm').reset();
+        }
+
+        function newPrediction() {
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('predictionForm').scrollIntoView();
+        }
+
+        function printResults() {
+            window.print();
+        }
+    </script>
 </body>
 </html>
