@@ -113,6 +113,84 @@ for col, (lower, upper) in ranges.items():
     if len(outliers[col]) > 0:
         print(f"  Min: {outliers[col].min()}, Max: {outliers[col].max()}")
 
+# 4.5 HANDLE OUTLIERS USING IQR METHOD
+# ==================================
+print("\nHandling outliers with IQR method...")
+df_no_outliers = df_clean.copy()
+
+# Function to cap outliers based on IQR
+def cap_outliers_iqr(series, column_name):
+    # Skip if all values are NaN
+    if series.isna().all():
+        return series
+    
+    # Calculate IQR
+    Q1 = series.quantile(0.25)
+    Q3 = series.quantile(0.75)
+    IQR = Q3 - Q1
+    
+    # Calculate bounds
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    
+    # Count outliers
+    lower_outliers = (series < lower_bound).sum()
+    upper_outliers = (series > upper_bound).sum()
+    
+    # Cap outliers - ensuring we maintain the original dtype
+    series_capped = series.copy()
+    if series.dtype == 'int64':
+        lower_bound = int(lower_bound)
+        upper_bound = int(upper_bound)
+    
+    # Apply capping
+    series_capped = series_capped.mask(series_capped < lower_bound, lower_bound)
+    series_capped = series_capped.mask(series_capped > upper_bound, upper_bound)
+    
+    # Report changes
+    print(f"{column_name}: IQR bounds [{lower_bound:.2f}, {upper_bound:.2f}]")
+    print(f"  Capped {lower_outliers} values below {lower_bound:.2f}")
+    print(f"  Capped {upper_outliers} values above {upper_bound:.2f}")
+    
+    return series_capped
+
+# Apply IQR method to numeric columns (excluding Outcome)
+numeric_for_iqr = [col for col in numeric_columns if col != 'Outcome']
+for col in numeric_for_iqr:
+    if col in df_no_outliers.columns:
+        # Only process non-null values
+        mask = ~df_no_outliers[col].isna()
+        if mask.any():
+            non_null_series = df_no_outliers.loc[mask, col]
+            df_no_outliers.loc[mask, col] = cap_outliers_iqr(non_null_series, col)
+
+# Create boxplots to visualize the data after outlier handling
+try:
+    # Set up a better visualization
+    plt.figure(figsize=(12, 25))
+    
+    # Before and after side by side for each feature
+    for i, col in enumerate(numeric_for_iqr):
+        if col in df_clean.columns:
+            plt.subplot(len(numeric_for_iqr), 2, i*2 + 1)
+            sns.boxplot(x=df_clean[col].dropna())
+            plt.title(f'{col} Before Outlier Handling')
+            
+            plt.subplot(len(numeric_for_iqr), 2, i*2 + 2)
+            sns.boxplot(x=df_no_outliers[col].dropna())
+            plt.title(f'{col} After Outlier Handling')
+    
+    plt.tight_layout()
+    plt.savefig('boxplots_outlier_comparison.png')
+    plt.close()
+    
+    print("Saved outlier comparison boxplots.")
+except Exception as e:
+    print(f"Warning: Could not create outlier boxplots: {e}")
+
+# Use the outlier-handled dataset for all subsequent steps
+df_clean = df_no_outliers.copy()
+
 # 5. VISUALIZE DISTRIBUTIONS BEFORE IMPUTATION
 # =========================================
 print("\nCreating pre-imputation visualizations...")
